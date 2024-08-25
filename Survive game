@@ -1,0 +1,149 @@
+import pygame
+import time
+import random
+
+pygame.init()
+
+# Set up the drawing window
+screen_x = 1000
+screen_y = 750
+screen = pygame.display.set_mode([screen_x, screen_y])
+pygame.display.set_caption("Hi")
+FONT = pygame.font.SysFont("comicsans", 30)
+
+# Initialize the start time and score
+start_time = time.time()
+score = 0
+all_score = 0
+
+# Initial position and speed of the box
+box_x, box_y = screen_x / 2 - 50, screen_y / 2 - 50
+box_speed = 0.2
+
+# Make power-ups
+powerUp_x, powerUp_y = random.randint(0, screen_x - 25), random.randint(0, screen_y - 25)
+
+# Shop state
+shop_open = False
+
+# Enemy properties
+enemy_speed = 0.1
+enemies = [{'x': random.randint(0, screen_x - 50), 'y': random.randint(0, screen_y - 50)} for _ in range(5)]
+
+
+def draw(screen, elapsed_time, box_x, box_y, powerUp_x, powerUp_y, score, shop_open, enemies):
+    time_text = FONT.render(f"Time: {round(elapsed_time)}s", True, (0, 0, 0))
+    score_text = FONT.render(f"Score: {score}", True, (0, 0, 0))
+    screen.blit(time_text, (10, 10))
+    screen.blit(score_text, (10, 40))
+    pygame.draw.rect(screen, (255, 0, 0), (box_x, box_y, 50, 50))
+    # Draw the border
+    pygame.draw.rect(screen, (0, 0, 0), (0, 0, screen.get_width(), screen.get_height()), 5)
+    # Draw the power-up
+    pygame.draw.rect(screen, (0, 0, 255), (powerUp_x, powerUp_y, 25, 25))
+    # Draw the enemies
+    for enemy in enemies:
+        pygame.draw.rect(screen, (0, 255, 0), (enemy['x'], enemy['y'], 50, 50))
+
+    # Draw the shop if open
+    if shop_open:
+        pygame.draw.rect(screen, (200, 200, 200), (200, 150, 600, 450))
+        shop_text = FONT.render("Shop", True, (0, 0, 0))
+        speed_text = FONT.render("Speed Boost - 10 Points (Press 1)", True, (0, 0, 0))
+        screen.blit(shop_text, (450, 160))
+        screen.blit(speed_text, (250, 250))
+
+
+def display_final_score(screen, score, elapsed_time):
+    screen.fill((255, 255, 255))
+    final_score_text = FONT.render(f"Final Score: {score}", True, (0, 0, 0))
+    final_time_text = FONT.render(f"Elapsed Time: {round(elapsed_time)}s", True, (0, 0, 0))
+    screen.blit(final_score_text, (screen_x // 2 - 100, screen_y // 2 - 50))
+    screen.blit(final_time_text, (screen_x // 2 - 100, screen_y // 2))
+    pygame.display.flip()
+    time.sleep(3)  # Display the final score for 3 seconds
+
+
+# Run until the user asks to quit
+running = True
+while running:
+
+    # Did the user click the window close button?
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Get the set of keys pressed and check for user input
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_e]:
+        shop_open = not shop_open
+        time.sleep(0.2)  # To prevent rapid toggling
+
+    if not shop_open:
+        #arrow keys
+        if keys[pygame.K_LEFT] and box_x > 5:
+            box_x -= box_speed
+        if keys[pygame.K_RIGHT] and box_x < screen.get_width() - 55:
+            box_x += box_speed
+        if keys[pygame.K_UP] and box_y > 5:
+            box_y -= box_speed
+        if keys[pygame.K_DOWN] and box_y < screen.get_height() - 55:
+            box_y += box_speed
+        #w,a,s,d keys
+        if keys[pygame.K_a] and box_x > 5:
+            box_x -= box_speed
+        if keys[pygame.K_d] and box_x < screen.get_width() - 55:
+            box_x += box_speed
+        if keys[pygame.K_w] and box_y > 5:
+            box_y -= box_speed
+        if keys[pygame.K_s] and box_y < screen.get_height() - 55:
+            box_y += box_speed
+
+        # Move enemies
+        for enemy in enemies:
+            enemy['x'] += random.choice([-1, 1]) * enemy_speed
+            enemy['y'] += random.choice([-1, 1]) * enemy_speed
+            # Keep enemies within the screen
+            enemy['x'] = max(0, min(screen_x - 50, enemy['x']))
+            enemy['y'] = max(0, min(screen_y - 50, enemy['y']))
+
+        # Create rectangles for collision detection
+        box_rect = pygame.Rect(box_x, box_y, 50, 50)
+        powerUp_rect = pygame.Rect(powerUp_x, powerUp_y, 25, 25)
+
+        # Check for collision with power-up and relocate if collision occurs
+        if box_rect.colliderect(powerUp_rect):
+            powerUp_x, powerUp_y = random.randint(0, screen_x - 25), random.randint(0, screen_y - 25)
+            score += 1
+            all_score += 1
+
+        # Check for collision with enemies
+        for enemy in enemies:
+            enemy_rect = pygame.Rect(enemy['x'], enemy['y'], 50, 50)
+            if box_rect.colliderect(enemy_rect):
+                elapsed_time = time.time() - start_time
+                display_final_score(screen, all_score, elapsed_time)
+                running = False  # End the game if collision occurs
+
+    # Check for shop interactions
+    if shop_open:
+        if keys[pygame.K_1] and score >= 10:
+            box_speed += 0.1
+            score -= 10
+            time.sleep(0.2)  # To prevent rapid buying
+
+    # Fill the background with white
+    screen.fill((255, 255, 255))
+
+    # Calculate elapsed time
+    elapsed_time = time.time() - start_time
+
+    # Draw the time text, the moving box, the power-up, and the enemies
+    draw(screen, elapsed_time, box_x, box_y, powerUp_x, powerUp_y, score, shop_open, enemies)
+
+    # Flip the display
+    pygame.display.flip()
+
+# Done! Time to quit.
+print("Beat Blitz YT https://github.com/THEHACKERISFIRST/Survive-game")
+pygame.quit()
